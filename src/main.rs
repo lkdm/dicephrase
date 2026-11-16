@@ -38,13 +38,13 @@ struct Args {
     /// Number of words in the passphrase (EFF recommends at least 6)
     #[arg(
         default_value_t = 6,
-        value_parser = clap::value_parser!(u32).range(MIN_WORDS as i64..=MAX_WORDS as i64)
+        value_parser = parse_word_count
     )]
     words: u32,
 
     /// Character(s) to insert between each word
-    #[arg(short, long, default_value = "-")]
-    separator: String,
+    #[arg(short, long, value_enum, default_value_t = Separator::Hyphen)]
+    separator: Separator,
 
     /// Passphrase word case
     #[arg(short, long, value_enum, default_value_t = Case::Sentence)]
@@ -58,10 +58,6 @@ struct Args {
     )]
     number: NumberPlacement,
 
-    /// Suppress informational messages
-    #[arg(short, long, default_value_t = false)]
-    quiet: bool,
-
     /// Do not copy the passphrase to the clipboard
     #[arg(long, default_value_t = false)]
     no_clipboard: bool,
@@ -69,6 +65,50 @@ struct Args {
     /// Do not display a QR code
     #[arg(long, default_value_t = false)]
     no_qr: bool,
+
+    /// Suppress informational messages
+    #[arg(short, long, default_value_t = false)]
+    quiet: bool,
+}
+
+fn parse_word_count(value: &str) -> Result<u32, String> {
+    let words: u32 = value
+        .parse()
+        .map_err(|_| format!("'{value}' is not a valid number"))?;
+
+    if !(MIN_WORDS..=MAX_WORDS).contains(&words) {
+        return Err(format!(
+            "Passphrases must contain between {MIN_WORDS} and {MAX_WORDS} words."
+        ));
+    }
+
+    Ok(words)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Separator {
+    /// Hyphen (-)
+    Hyphen,
+    /// Underscore (_)
+    Underscore,
+    /// Period (.)
+    Period,
+    /// Space
+    Space,
+    /// No separator
+    None,
+}
+
+impl Separator {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Hyphen => "-",
+            Self::Underscore => "_",
+            Self::Period => ".",
+            Self::Space => " ",
+            Self::None => "",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -159,7 +199,8 @@ fn generate_passphrase(
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    let passphrase = generate_passphrase(args.words, &args.separator, args.case, args.number)?;
+    let passphrase =
+        generate_passphrase(args.words, &args.separator.as_str(), args.case, args.number)?;
 
     let _clipboard_guard = if !args.no_clipboard {
         Some(clipboard::ClipboardGuard::new(passphrase.clone())?)
