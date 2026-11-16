@@ -1,4 +1,8 @@
 
+## Improvements
+
+- [ ] Separate the logic from the presentation
+
 ## Ratatui output
 
 - [ ] Show redacted passphrase with key to reveal it
