@@ -3,11 +3,12 @@ use std::error::Error;
 
 pub mod clipboard;
 pub mod dice;
+pub mod qr;
 pub mod words;
 
 use dice::DiceRolls;
 
-use crate::words::entropy;
+use crate::{qr::print_qr, words::entropy};
 
 const HELP: &str = concat!(
     env!("CARGO_PKG_NAME"),
@@ -179,7 +180,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         Output::Qr => {
-            return Err("QR output is not implemented yet".into());
+            print_qr(&passphrase)?;
+            println!("Remember to clear screen after scan.");
         }
     }
 
