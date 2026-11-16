@@ -6,12 +6,10 @@ Uses your operating system's cryptographically secure random number generator (C
 
 ## Installation
 
-Requires Rust.
+Requires [Rust](https://rustup.rs).
 
 ```bash
-git clone https://github.com/lkdm/dicephrase.git
-cd dicephrase
-cargo install --path .
+cargo install --git https://github.com/lkdm/dicephrase.git
 ```
 
 ## Usage
