@@ -54,13 +54,26 @@ struct Args {
     #[arg(short, long, value_enum, default_value_t = Output::Clipboard)]
     output: Output,
 
-    /// Add a number
-    #[arg(short, long, default_value_t = true)]
-    number: bool,
+    /// Number placement
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = NumberPlacement::Trailing
+    )]
+    number: NumberPlacement,
 
     /// Suppress informational messages
     #[arg(short, long, default_value_t = false)]
     quiet: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum NumberPlacement {
+    None,
+    /// Append a number to the phrase
+    Trailing,
+    /// Inject the number at the end of a random word
+    Random,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -112,7 +125,7 @@ fn generate_passphrase(
     word_count: u32,
     separator: &str,
     case: Case,
-    number: bool,
+    number: NumberPlacement,
 ) -> Result<String, Box<dyn Error>> {
     let mut words = Vec::with_capacity(word_count as usize);
 
@@ -130,11 +143,17 @@ fn generate_passphrase(
         }
     }
 
-    if number {
-        let index = dice::random_index(words.len())?;
-        let digit = dice::random_digit()?;
-
-        words[index].push(char::from(b'0' + digit));
+    match number {
+        NumberPlacement::None => {}
+        NumberPlacement::Trailing => {
+            let digit = dice::random_digit()?;
+            words.last_mut().unwrap().push(char::from(b'0' + digit));
+        }
+        NumberPlacement::Random => {
+            let index = dice::random_index(words.len())?;
+            let digit = dice::random_digit()?;
+            words[index].push(char::from(b'0' + digit));
+        }
     }
 
     Ok(words.join(separator))
