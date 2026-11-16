@@ -212,6 +212,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         print_qr(&passphrase)?;
     }
 
+    // If no clipboard, and no qr, we assume the user wants to output to stdout
+    if args.no_clipboard && args.no_qr {
+        println!("{passphrase}");
+    }
+
     if !args.quiet {
         println!(
             "Estimated entropy: {:.1} bits",
