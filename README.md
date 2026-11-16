@@ -2,6 +2,8 @@
 
 Generate strong, memorable passphrases securely and entirely offline.
 
+<img width="776" height="545" alt="Screenshot of the crossterm output of dicephrase" src="https://github.com/user-attachments/assets/f7fc7038-fb4f-482c-b6c0-85d538ad5c19" />
+
 `dicephrase` uses your operating system's cryptographically secure random number generator (CSPRNG) to generate Diceware passphrases using the EFF Large Diceware Wordlist.
 
 1. Generates cryptographically secure random numbers.
