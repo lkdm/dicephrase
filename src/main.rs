@@ -69,10 +69,6 @@ struct Args {
     #[arg(short, long, value_enum, default_value_t = Output::Clipboard)]
     output: Output,
 
-    /// Clipboard timeout in seconds
-    #[arg(short, long, default_value_t = 30)]
-    timeout: u32,
-
     /// Suppress terminal output
     #[arg(short, long, default_value_t = false)]
     quiet: bool,
