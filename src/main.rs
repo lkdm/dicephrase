@@ -1,14 +1,20 @@
 use clap::{Parser, ValueEnum};
+use crossterm::{
+    cursor::MoveTo,
+    execute,
+    terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
+};
 use std::error::Error;
 
 pub mod clipboard;
 pub mod dice;
 pub mod qr;
+pub mod screen;
 pub mod words;
 
 use dice::DiceRolls;
 
-use crate::{qr::print_qr, words::entropy};
+use crate::{qr::print_qr, screen::TerminalGuard, words::entropy};
 
 const HELP: &str = concat!(
     "Wordlist: EFF Large Diceware (7,776 words)\n",
@@ -69,6 +75,10 @@ struct Args {
     /// Suppress informational messages
     #[arg(short, long, default_value_t = false)]
     quiet: bool,
+
+    /// Output the passphrase to stdout (not recommended)
+    #[arg(long, default_value_t = false)]
+    stdout: bool,
 }
 
 fn parse_word_count(value: &str) -> Result<u32, String> {
@@ -200,7 +210,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     let passphrase =
-        generate_passphrase(args.words, &args.separator.as_str(), args.case, args.number)?;
+        generate_passphrase(args.words, args.separator.as_str(), args.case, args.number)?;
+
+    // stdout mode: output only the passphrase.
+    if args.stdout {
+        println!("{passphrase}");
+        return Ok(());
+    }
+
+    // Interactive mode.
+    let _terminal_guard = TerminalGuard::new(true)?;
+
+    ctrlc::set_handler(|| {
+        let mut stdout = std::io::stdout();
+        let _ = execute!(stdout, LeaveAlternateScreen);
+        std::process::exit(130);
+    })?;
 
     let _clipboard_guard = if !args.no_clipboard {
         Some(clipboard::ClipboardGuard::new(passphrase.clone())?)
@@ -212,7 +237,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         print_qr(&passphrase)?;
     }
 
-    // If no clipboard, and no qr, we assume the user wants to output to stdout
+    // If neither clipboard nor QR is enabled, print the passphrase.
     if args.no_clipboard && args.no_qr {
         println!("{passphrase}");
     }
@@ -236,6 +261,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    // Wait only when the clipboard needs to remain available.
     if !args.no_clipboard {
         let mut input = String::new();
         std::io::stdin().read_line(&mut input)?;
