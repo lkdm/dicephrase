@@ -20,7 +20,7 @@ const HELP: &str = concat!(
     env!("CARGO_PKG_REPOSITORY"),
 );
 
-const MIN_WORDS: u32 = 1;
+const MIN_WORDS: u32 = 6;
 const MAX_WORDS: u32 = 100;
 
 /// Generate a random Diceware passphrase
@@ -50,10 +50,6 @@ struct Args {
     #[arg(short, long, value_enum, default_value_t = Case::Sentence)]
     case: Case,
 
-    /// Output format
-    #[arg(short, long, value_enum, default_value_t = Output::Clipboard)]
-    output: Output,
-
     /// Number placement
     #[arg(
         long,
@@ -65,6 +61,14 @@ struct Args {
     /// Suppress informational messages
     #[arg(short, long, default_value_t = false)]
     quiet: bool,
+
+    /// Do not copy the passphrase to the clipboard
+    #[arg(long, default_value_t = false)]
+    no_clipboard: bool,
+
+    /// Do not display a QR code
+    #[arg(long, default_value_t = false)]
+    no_qr: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -88,13 +92,6 @@ enum Case {
     Random,
     /// Uppercase the first letter of the phrase
     Sentence,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum Output {
-    Clipboard,
-    Qr,
-    Stdout,
 }
 
 fn format_word(word: &str, case: Case) -> Result<String, Box<dyn Error>> {
@@ -164,39 +161,38 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let passphrase = generate_passphrase(args.words, &args.separator, args.case, args.number)?;
 
-    if args.words < 6 && !args.quiet {
-        eprintln!("Warning: The EFF recommends using at least 6 words for better security.");
+    let _clipboard_guard = if !args.no_clipboard {
+        Some(clipboard::ClipboardGuard::new(passphrase.clone())?)
+    } else {
+        None
+    };
+
+    if !args.no_qr {
+        print_qr(&passphrase)?;
     }
 
-    match args.output {
-        Output::Stdout => {
-            println!("{passphrase}");
+    if !args.quiet {
+        println!(
+            "Estimated entropy: {:.1} bits",
+            entropy(args.words as usize)
+        );
+
+        if !args.no_clipboard {
+            eprintln!("Passphrase copied to clipboard.");
         }
 
-        Output::Clipboard => {
-            let _guard = clipboard::ClipboardGuard::new(passphrase.clone())?;
-
-            if !args.quiet {
-                println!(
-                    "Passphrase generated successfully!\nEstimated entropy: {:.1} bits",
-                    entropy(args.words as usize)
-                );
-
-                println!("\nPassphrase copied.");
-                println!("Press Enter to clear clipboard and exit.");
-            }
-
-            let mut input = String::new();
-            std::io::stdin().read_line(&mut input)?;
+        if !args.no_qr {
+            eprintln!("Scan the QR code to retrieve your passphrase.");
         }
 
-        Output::Qr => {
-            print_qr(&passphrase)?;
-
-            if !args.quiet {
-                println!("Remember to clear screen after scan.");
-            }
+        if !args.no_clipboard {
+            eprintln!("Press Enter to clear clipboard and exit.");
         }
+    }
+
+    if !args.no_clipboard {
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
     }
 
     Ok(())
